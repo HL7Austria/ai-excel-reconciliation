@@ -1,0 +1,60 @@
+# ------------------------------------------------------------------
+# Ballot-Daten – NICHT ins Repo (personenbezogene Daten: Namen,
+# E-Mail-Adressen, Telefonnummern der Einreichenden)
+# Ins Repo kommen nur die Skills unter .claude/skills/ (und diese Datei)
+# ------------------------------------------------------------------
+
+# Eingereichte Kommentardateien und Reconciliation-Datei
+*.xlsx
+*.xlsm
+*.xls
+*.csv
+
+# Einreichungen per E-Mail / als Dokument
+*.pdf
+*.msg
+*.eml
+*.docx
+
+# Arbeitskopien dieses Ballots (verallgemeinerte Fassungen liegen in .claude/skills/)
+/scripts/
+/ballot-comment.md
+/ballot-reconciliation-comment.md
+/ballot-reconciliation-comment-group.md
+# projektspezifische Schreibregel (allgemein: Skill ballot-dateischutz)
+.claude/skills/ballot-schreibschutz/
+
+# Ergebnisse/Zwischenstände der Skripte (falls nicht im Scratchpad abgelegt)
+issues.json
+ergebnis.json
+reconciliation_ergebnis.json
+dateischutz.json
+reconciliation/
+
+# ------------------------------------------------------------------
+# Zugangsdaten
+# ------------------------------------------------------------------
+.env
+.env.*
+*.token
+*.pem
+
+# ------------------------------------------------------------------
+# Technische Abfälle
+# ------------------------------------------------------------------
+# Office-Sperrdateien
+~$*
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+# Betriebssystem / OneDrive
+Thumbs.db
+desktop.ini
+.DS_Store
+# Editor
+.vscode/
+.idea/
+# Claude Code: lokale (persönliche) Einstellungen
+.claude/settings.local.json
