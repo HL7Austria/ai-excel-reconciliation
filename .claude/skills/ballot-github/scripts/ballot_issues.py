@@ -44,6 +44,9 @@ from xlsx_xml import sheet_xml_path  # noqa: E402
 X01 = getattr(_cfg, "X01", None)                     # optionale Nicht-Excel-Einreichung
 EXTRA = getattr(_cfg, "EXTRA", [X01] if X01 else [])  # Liste solcher Einreichungen
 KOMMENTARE_SHEET = getattr(_cfg, "KOMMENTARE_SHEET", "4) Kommentare")
+TEILNEHMER_SHEET = getattr(_cfg, "TEILNEHMER_SHEET", "2) Teilnehmer")
+# Teilnehmer in Issues als Kennung statt Klarname, z. B. "ballot-participant-{nr}" (Spalte "Nr"); None = Klarnamen
+PARTICIPANT_ID = getattr(_cfg, "PARTICIPANT_ID", None)
 
 API_ROOT = "https://api.github.com"
 API = f"{API_ROOT}/repos/{REPO}"
@@ -66,6 +69,20 @@ def bew_key(b):
     return m.group(0) if m else None
 
 
+def participant_ids(recon):
+    """{Teilnehmer (casefold): Kennung} aus dem Teilnehmer-Blatt (Spalten "Teilnehmer" und "Nr")."""
+    ws = openpyxl.load_workbook(recon, read_only=True, data_only=True)[TEILNEHMER_SHEET]
+    head = next(ws.iter_rows(min_row=1, max_row=1, values_only=True))
+    it, inr = head.index("Teilnehmer"), head.index("Nr")
+    out = {}
+    for r in ws.iter_rows(min_row=2, values_only=True):
+        if r[it] == "Ergebnis":
+            break
+        if r[it] and r[inr] is not None:
+            out[str(r[it]).strip().casefold()] = PARTICIPANT_ID.format(nr=int(r[inr]))
+    return out
+
+
 def read_comments(recon):
     ws = openpyxl.load_workbook(recon, read_only=True, data_only=True)[KOMMENTARE_SHEET]
     out = {}
@@ -73,6 +90,14 @@ def read_comments(recon):
         if row[0] is None:
             continue
         out[int(row[0])] = dict(zip(FIELDS, row))
+    if PARTICIPANT_ID:                                   # Klarnamen durch Kennung ersetzen
+        pmap = participant_ids(recon)
+        fehlend = sorted({str(c["Teilnehmer"]) for c in out.values()
+                          if str(c["Teilnehmer"] or "").strip().casefold() not in pmap})
+        if fehlend:
+            raise SystemExit(f"Teilnehmer ohne Nr in '{TEILNEHMER_SHEET}': {fehlend}")
+        for c in out.values():
+            c["Teilnehmer"] = pmap[str(c["Teilnehmer"]).strip().casefold()]
     return out
 
 
@@ -154,7 +179,7 @@ def build(recon):
     for x in EXTRA:                       # Einreichungen ohne Kommentarformular (E-Mail/PDF)
         xb = (f"<details>\n<summary><b>{x['id']}</b> · {x['teilnehmer']} · {bew_key(x['bewertung']).strip('()')} · "
               f"{x['kurz']}</summary>\n\n| Feld | Inhalt |\n|---|---|\n| ID | {x['id']} |\n"
-              f"| Teilnehmer | {x['teilnehmer']} |\n| Einsender | {x['einsender']} |\n"
+              f"| Teilnehmer | {x['teilnehmer']} |\n"
               f"| Eingang | {x['eingang']} |\n| Bewertung | {x['bewertung']} |\n\n"
               f"**Kernfragestellung**\n{quote(x['text'])}\n\n</details>\n")
         issues.append({
@@ -326,22 +351,34 @@ def cmd_anlegen(outdir):
 
 
 # ---------------------------------------------------------------- Excel (Spalte M)
-def cmd_excel(recon_in, recon_out, outdir):
+def cmd_excel(recon_in, recon_out, outdir, *flags):
+    """--ersetzen: vorhandene Einträge überschreiben, aber nur alte Issue-URLs dieses Repos."""
     result = json.load(open(os.path.join(outdir, "ergebnis.json"), encoding="utf-8"))
     url_by_id = {n: v["url"] for v in result.values() for n in v["kommentare"]}
     with zipfile.ZipFile(recon_in) as zin:
         sheet_path = sheet_xml_path(zin, KOMMENTARE_SHEET)
         xml = zin.read(sheet_path).decode("utf-8")
+        alt_url = re.compile(rf"https://github\.com/{re.escape(REPO)}/issues/\d+")
+        try:   # Excel legt Texte beim Speichern in sharedStrings.xml ab (Zelle t="s" mit Index)
+            sst = [re.sub(r"<[^>]+>", "", si) for si in
+                   re.findall(r"<si>(.*?)</si>", zin.read("xl/sharedStrings.xml").decode("utf-8"), re.S)]
+        except KeyError:
+            sst = []
+
+        def zelltext(c):
+            if 't="s"' in c:
+                return sst[int(re.search(r"<v>(\d+)</v>", c).group(1))]
+            return re.sub(r"<[^>]+>", "", c)
         rows = {int(m.group(2)): int(m.group(1)) for m in
                 re.finditer(r'<c r="A(\d+)"[^>]*><v>(\d+)</v></c>', xml)}
         done = 0
         for n, url in sorted(url_by_id.items()):
             r = rows[n]
-            m = re.search(rf'<c r="M{r}"( s="\d+")?(/>|>.*?</c>)', xml, re.S)
+            m = re.search(rf'<c r="M{r}"( s="\d+")?[^>]*?(/>|>.*?</c>)', xml, re.S)
             if m is None:
                 raise SystemExit(f"Zelle M{r} nicht gefunden")
-            if m.group(2) != "/>":
-                raise SystemExit(f"Zelle M{r} (K-{n:03d}) ist nicht leer – Abbruch")
+            if m.group(2) != "/>" and not ("--ersetzen" in flags and alt_url.fullmatch(zelltext(m.group(0)).strip())):
+                raise SystemExit(f"Zelle M{r} (K-{n:03d}) ist nicht leer bzw. keine alte Issue-URL – Abbruch")
             new = f'<c r="M{r}"{m.group(1) or ""} t="inlineStr"><is><t>{escape(url)}</t></is></c>'
             xml = xml[:m.start()] + new + xml[m.end():]
             done += 1
@@ -370,6 +407,7 @@ def cmd_vorschau(recon, outdir):
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
     cmd, *args = sys.argv[1:]
     cmds = {"vorschau": cmd_vorschau, "pruefen": cmd_pruefen, "labels": cmd_labels,
             "anlegen": cmd_anlegen, "excel": cmd_excel}

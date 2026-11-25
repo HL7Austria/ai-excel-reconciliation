@@ -136,5 +136,6 @@ def cmd_anlegen(outdir):
 if __name__ == "__main__":
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
     cmd, *args = sys.argv[1:]
     {"vorschau": cmd_vorschau, "anlegen": cmd_anlegen}[cmd](*args)

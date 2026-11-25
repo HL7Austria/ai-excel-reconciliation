@@ -11,6 +11,9 @@ REPO = "HL7Austria/<Repo-Name>"           # Ziel-Repo
 BALLOT_ID = "JJJJ-N"                      # z. B. "2026-3"; steht in Marker-Zeilen und im Label
 KOMMENTARE_SHEET = "4) Kommentare"        # Blatt der Reconciliation-Datei
 BALLOT_LABEL = f"ballot-{BALLOT_ID}"
+# Teilnehmer in Issues nur als Kennung (Nr aus Spalte "Nr" des Teilnehmer-Blatts); None = Klarnamen
+PARTICIPANT_ID = "ballot-participant-{nr}"
+TEILNEHMER_SHEET = "2) Teilnehmer"
 
 BEREICHE = {
     "L": "Leitfaden",
@@ -34,19 +37,18 @@ BEWERTUNG_RANG = ["(NEG-S)", "(NEG-G)", "(Z-F)", "(Z-V)", "(Z-K)", "(Z-T)", "(K)
 
 # ---------------------------------------------------------------- Inhalte (für JEDEN Kommentar)
 KURZ = {
-    1: ("L", "Auf feste AT-Core-Version aufbauen"),
-    2: ("P", "Unklar, warum manche optionalen Elemente entfernt wurden"),
-    # …
+    # 1: ("L", "<Kurzfassung, ≤ ~60 Zeichen, ohne Hinweis auf den Einreicher>"),
 }
 
 GRUPPEN_META = {
-    "G01": ("L", "Der IG referenziert … mit #current statt einer festen Version.", "dependencies.html"),
-    # …
+    # "G01": ("L", "<Anliegen, 1–2 Sätze>", "<Betroffene Stelle, z. B. Seite des IG>"),
 }
 
+# Besser: E-Mail-/PDF-Einreicher in die Teilnehmerliste und den Kommentar ins Kommentar-Blatt
+# eintragen – dann bleibt EXTRA leer. Sonst Teilnehmer nur als Kennung, keine Namen.
 EXTRA = [
-    # {"id": "X01", "bereich": "R", "teilnehmer": "<Organisation>", "einsender": "<Name, Funktion>",
-    #  "eingang": "E-Mail vom TT.MM.JJJJ an tc-fhir@hl7.at", "bewertung": "(Z-F) Zustimmung mit Frage",
+    # {"id": "X01", "bereich": "R", "teilnehmer": "ballot-participant-<Nr>",
+    #  "eingang": "E-Mail vom TT.MM.JJJJ an <Adresse>", "bewertung": "(Z-F) Zustimmung mit Frage",
     #  "kurz": "<Kurzfassung>", "text": "<Kernfragestellung wörtlich>"},
 ]
 

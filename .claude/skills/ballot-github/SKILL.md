@@ -33,6 +33,16 @@ Issue-URL je Kommentar in der Excel-Datei.
 
 ## Issue-Format (bewährt)
 
+- **Keine Klarnamen in Issues:** Teilnehmer erscheinen nur als Kennung `ballot-participant-<Nr>`
+  (Spalte „Nr“ im Teilnehmer-Blatt; `PARTICIPANT_ID` in `ballot_metadaten.py`). Das gilt auch für
+  E-Mail-/PDF-Einreichungen – diese am besten als Teilnehmer + Kommentar in die Excel eintragen.
+  Selbst formulierte Titel/Kurzfassungen dürfen den Einreicher nicht verraten (z. B. „(MA01/…)“).
+  Nachträgliches Bearbeiten reicht nicht: GitHub zeigt frühere Fassungen im Bearbeitungsverlauf –
+  dann Issues löschen und neu anlegen. Löschen geht nur per GraphQL-Mutation `deleteIssue` und
+  braucht die Rolle Admin im Repo; das Skript hat dafür keinen Befehl. Vorher alle Marker-Issues
+  samt Kommentaren sichern, auf fremde Kommentare prüfen, bereits ausgefüllte
+  Reconciliation-Kommentare übernehmen und die Löschung ausdrücklich bestätigen lassen. Danach
+  `ergebnis.json` beiseitelegen, `anlegen` erneut ausführen und `excel … --ersetzen` aufrufen.
 - Titel `[G13] Thema` bzw. `[K-041] Kurzfassung` / `[X01] …` – Ballot steckt im Label, nicht im Titel.
 - IDs immer `K-NNN`, nie `#NNN` (GitHub verlinkt sonst auf Issue NNN); `@` vermeiden.
 - Kopf: HTML-Marker `<!-- ballot=<ID>; gruppe=…; kommentare=… -->` (Duplikaterkennung, Rückführung),
@@ -66,6 +76,7 @@ python -I scripts/ballot_issues.py pruefen  <out>                  # Token, Writ
 python -I scripts/ballot_issues.py labels   <out>                  # fehlende Labels anlegen
 python -I scripts/ballot_issues.py anlegen  <out>                  # ~3 s je Issue, wiederaufsetzbar
 python -I scripts/ballot_issues.py excel    <recon_in> <recon_out> <out>   # Issue-URL je Kommentar in Spalte M
+#   … --ersetzen   überschreibt vorhandene Einträge, aber nur alte Issue-URLs dieses Repos (nach Neuanlage)
 python -I scripts/ballot_reconciliation_kommentare.py vorschau <out>
 python -I scripts/ballot_reconciliation_kommentare.py anlegen  <out>
 ```
